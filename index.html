@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat vs Dog AI Classifier</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0f0f1a, #1a1a2e);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 15px;
+        }
+        h1 {
+            font-size: 38px;
+            margin-bottom: 5px;
+            background: linear-gradient(90deg, #ff6eb4, #a78bfa, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle { color: #888; margin-bottom: 25px; font-size: 15px; }
+        .main-box {
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px;
+            padding: 25px;
+            width: 100%;
+            max-width: 550px;
+        }
+        .upload-area {
+            border: 2px dashed rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #a78bfa;
+            background: rgba(167,139,250,0.05);
+        }
+        .upload-area p { color: #888; margin-top: 8px; }
+        #preview {
+            width: 100%;
+            max-height: 300px;
+            object-fit: cover;
+            border-radius: 12px;
+            margin: 15px 0;
+            display: none;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            margin-top: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-classify {
+            background: linear-gradient(135deg, #a78bfa, #60a5fa);
+            color: white;
+            display: none;
+        }
+        .btn-classify:hover { opacity: 0.85; }
+        .btn-reset {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            display: none;
+        }
+        .result-box {
+            margin-top: 15px;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            display: none;
+        }
+        .result-box.cat { background: rgba(255,110,180,0.15); border: 2px solid #ff6eb4; }
+        .result-box.dog { background: rgba(96,165,250,0.15); border: 2px solid #60a5fa; }
+        .result-box.human { background: rgba(250,204,21,0.15); border: 2px solid #facc15; }
+        .result-box.none { background: rgba(239,68,68,0.15); border: 2px solid #ef4444; }
+        .result-emoji { font-size: 50px; }
+        .result-label { font-size: 26px; font-weight: bold; margin: 8px 0; }
+        .result-msg { color: #aaa; font-size: 14px; }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #a78bfa;
+            font-size: 16px;
+            display: none;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(167,139,250,0.3);
+            border-radius: 50%;
+            border-top-color: #a78bfa;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .footer {
+            margin-top: 30px;
+            color: #555;
+            font-size: 12px;
+            text-align: center;
+        }
+        .footer a { color: #a78bfa; text-decoration: none; }
+        .stats {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .stat-box {
+            flex: 1;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-num { font-size: 24px; font-weight: bold; color: #a78bfa; }
+        .stat-label { font-size: 11px; color: #888; margin-top: 3px; }
+        .conf-bar-bg {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            height: 8px;
+            margin-top: 10px;
+            overflow: hidden;
+            display: none;
+        }
+        .conf-bar {
+            height: 100%;
+            border-radius: 10px;
+            transition: width 1s ease;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐱 Cat vs Dog AI 🐶</h1>
+    <p class="subtitle">Upload a photo and AI will classify it!</p>
+
+    <div class="main-box">
+        <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+            <div style="font-size:40px;">📁</div>
+            <p><b style="color:#a78bfa">Click to upload</b> a photo</p>
+            <p style="font-size:12px;">JPG, PNG supported</p>
+        </div>
+        <input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFile(event)">
+        <img id="preview" alt="Preview">
+        <button class="btn btn-classify" id="classifyBtn" onclick="classify()">🔍 Classify Image</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div> AI is analyzing... Please wait!
+        </div>
+
+        <div class="result-box" id="resultBox">
+            <div class="result-emoji" id="emoji"></div>
+            <div class="result-label" id="label"></div>
+            <div class="result-msg" id="message"></div>
+            <div class="conf-bar-bg" id="confBarBg">
+                <div class="conf-bar" id="confBar"></div>
+            </div>
+        </div>
+
+        <button class="btn btn-reset" id="resetBtn" onclick="reset()">Try Another Photo</button>
+
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-num" id="totalCount">0</div>
+                <div class="stat-label">Total Scanned</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" id="catCount">0</div>
+                <div class="stat-label">Cats Found</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" id="dogCount">0</div>
+                <div class="stat-label">Dogs Found</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Built by Muhammad Qasim | Powered by
+        <a href="https://huggingface.co/spaces/its-qasim/cat-dog-classifier" target="_blank">Hugging Face</a>
+    </div>
+
+    <script>
+        let imageData = null;
+        let total = 0, cats = 0, dogs = 0;
+        const API_URL = "https://its-qasim-cat-dog-classifier.hf.space/api/predict";
+
+        function handleFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('preview').src = e.target.result;
+                document.getElementById('preview').style.display = 'block';
+                document.getElementById('uploadArea').style.display = 'none';
+                document.getElementById('classifyBtn').style.display = 'block';
+                document.getElementById('resultBox').style.display = 'none';
+                document.getElementById('resetBtn').style.display = 'none';
+                imageData = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function classify() {
+            if (!imageData) return;
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('classifyBtn').style.display = 'none';
+            document.getElementById('resultBox').style.display = 'none';
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: [imageData] })
+                });
+                const result = await response.json();
+                const text = result.data[0];
+                showResult(text);
+            } catch (error) {
+                showResult("Error connecting to AI server. Please try again!");
+            }
+            document.getElementById('loading').style.display = 'none';
+        }
+
+        function showResult(text) {
+            const box = document.getElementById('resultBox');
+            const emoji = document.getElementById('emoji');
+            const label = document.getElementById('label');
+            const msg = document.getElementById('message');
+            const bar = document.getElementById('confBar');
+            const barBg = document.getElementById('confBarBg');
+
+            box.className = 'result-box';
+            barBg.style.display = 'none';
+            total++;
+            document.getElementById('totalCount').textContent = total;
+
+            if (text.includes('CAT')) {
+                box.classList.add('cat');
+                emoji.textContent = '🐱';
+                label.textContent = 'CAT DETECTED!';
+                label.style.color = '#ff6eb4';
+                const conf = text.match(/[\d.]+%/);
+                msg.textContent = conf ? 'Confidence: ' + conf[0] : '';
+                if (conf) {
+                    bar.style.background = '#ff6eb4';
+                    bar.style.width = conf[0];
+                    barBg.style.display = 'block';
+                }
+                cats++;
+                document.getElementById('catCount').textContent = cats;
+            } else if (text.includes('DOG')) {
+                box.classList.add('dog');
+                emoji.textContent = '🐶';
+                label.textContent = 'DOG DETECTED!';
+                label.style.color = '#60a5fa';
+                const conf = text.match(/[\d.]+%/);
+                msg.textContent = conf ? 'Confidence: ' + conf[0] : '';
+                if (conf) {
+                    bar.style.background = '#60a5fa';
+                    bar.style.width = conf[0];
+                    barBg.style.display = 'block';
+                }
+                dogs++;
+                document.getElementById('dogCount').textContent = dogs;
+            } else if (text.includes('HUMAN')) {
+                box.classList.add('human');
+                emoji.textContent = '👤';
+                label.textContent = 'HUMAN DETECTED!';
+                label.style.color = '#facc15';
+                msg.textContent = 'Not a cat or dog!';
+            } else {
+                box.classList.add('none');
+                emoji.textContent = '❓';
+                label.textContent = 'NOT DETECTED';
+                label.style.color = '#ef4444';
+                msg.textContent = 'Not a cat or dog!';
+            }
+
+            box.style.display = 'block';
+            document.getElementById('resetBtn').style.display = 'block';
+        }
+
+        function reset() {
+            document.getElementById('preview').style.display = 'none';
+            document.getElementById('uploadArea').style.display = 'block';
+            document.getElementById('classifyBtn').style.display = 'none';
+            document.getElementById('resultBox').style.display = 'none';
+            document.getElementById('resetBtn').style.display = 'none';
+            document.getElementById('fileInput').value = '';
+            imageData = null;
+        }
+    </script>
+</body>
+</html>
